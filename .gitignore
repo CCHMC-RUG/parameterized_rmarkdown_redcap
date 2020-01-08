@@ -2,5 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+*.html
+./rug_redcap/individual_redcap_reports/
 trash
 redcap_data

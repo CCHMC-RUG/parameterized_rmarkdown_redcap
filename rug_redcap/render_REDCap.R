@@ -21,10 +21,3 @@ purrr::walk(c(ids),
                                                      '_', "OGTT_Results", '.html')))
 
 
-purrr::walk(c(last_ids),
-            ~ rmarkdown::render('./PUFP_ufp_only_param.Rmd',
-                                params = list(participant_id_string = .x,
-                                              exposure_period_string = exposure_period_string),
-                                envir = new.env(),
-                                output_file = paste0(report_path, 'UFP_only_Period_', exposure_period_string,
-                                                     '_', .x, '.html')))

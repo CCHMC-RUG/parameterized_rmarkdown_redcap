@@ -3,9 +3,9 @@
 ### 'simple' - one parameter (year) render commands
 
 dir <- getwd()
-rmd_doc <- paste0(dir, "/rug_weather/", "weather_params_simple.Rmd")
+rmd_doc <- paste0(dir, "/rug_weather/weather_params_simple.Rmd")
 
-rm_doc # filepath of .Rmd file 
+rmd_doc # filepath of .Rmd file 
 
 ### render .Rmd document for single year
 rmarkdown::render(rmd_doc, params = list(year = 2010), envir = new.env())
