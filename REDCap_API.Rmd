@@ -1,0 +1,161 @@
+---
+title: "REDCap API and Parameterized Reports"
+author: "CCHMC_RUG - January 2020"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: journal
+    highlight: breezedark
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment = NA)
+```
+
+```{r lib, echo = FALSE, message = FALSE, warning = FALSE}
+library(tidyverse)
+```
+
+# Parameterized Reports and REDCap
+
+Together, parameterized reporting and connecting to the REDCap API with R go beyond REDCap's built-in reporting and data vizualization tools and allow for in depth exploration of your study data.
+
+I am starting to sound like a broken record, but... connecting to directly to your study data via the REDCap API:
+
+  - **boosts efficiencey/reduces programming time**
+  - simplifies workflow
+  - enhances reproducibility
+  - reduces errors
+    + ensures your analysis is always performed on current data
+  
+# REDCap API
+<br>
+
+### What is an API?
+
+API stands for Application Programming Interface.  A higher level overview of APIs can be found [here](https://zapier.com/learn/apis/).
+
+From REDCap's API documentation: 
+
+<center>
+*"The REDCap API is an interface that allows external applications to connect to REDCap remotely, and is used for programmatically retrieving or modifying data or settings within REDCap, such as performing automated data imports/exports for a specified REDCap project."*
+</center>
+<br>
+Specifically, I will be talking about **retrieving data within REDCap."** 
+
+### Tokens
+
+In order to access the REDCap API, you must request a token.  Essentially, your token is equivalent to your user name and passowrd and is used as a means to authenticate your access.  However, a token is project specific, meaning you must request multiple tokens if you are key personnel on more than one project.  Your token must be inluded in each API request.  
+
+An API token typically is a long string of characters and numbers and may look something like this: 
+
+```{r, eval = FALSE}
+"ABCDEFGH1234BFEAB66F4322BEF99DCF90F3F"
+```
+
+### Managing Tokens
+
+Again, your REDCap token is essentially your username and password, but project specific.  Just like you would never share your usename and password, **you should never share your token.**  If your token is accidentally disclosed, you can request a new token.  You might also consider talking to the IRB...
+
+You should avoid copying and pasting your token directly in your R code.  This is especially true if you plan on sharing your code or are using version control (i.e. GitHub) to maintain your project.
+
+Some basic tips securely on managing your tokens can be found [here](https://cran.r-project.org/web/packages/httr/vignettes/secrets.html).
+
+I prefer to store my tokens as environment variables.  An environment variable (envar) is a dynamic "object" on a computer, containing an editable value, which may be used by one or more software programs.
+
+To pass your tokan as an envar in R, you can edit the file called `.Renviron` in your home directory.  To edit this run: 
+
+```{r eval = FALSE}
+file.edit("~/.Renviron")
+```
+
+And you can access the values in R using Sys.getenv():
+
+```{r eval = FALSE}
+Sys.getenv("whatever_variable_i_called_my_token")
+```
+
+### API Security
+
+API requests are done using a secure internet connection (HTTPS),  which means that the traffic to and from the REDCap server is encrypted.  However, it is recommended to take additional steps to validate the certificate of the REDCap web server. If you do not validate the SSL certificate, you may fall victim to a "Man in the Middle" attack.
+
+# Accessig the REDCap API 
+
+The REDCap "API Playground" is extremely helpful at demonstrating how to make API requests.  It will generate the code that will return the data you specify in your request for multiple programming languages.  You can also download sample code.
+
+The default package in R is RCurl.
+
+A good online resource for accessing the REDCap API using R can be found in the documentation for the [REDCapR package](https://cran.r-project.org/web/packages/REDCapR/vignettes/TroubleshootingApiCalls.html).
+
+### User Rights
+
+You will need to have the correct user rights in order to access the REDCap API. You will be unable to request a token if you do not have privileges to access the API.  If you do not have privileges to export data, you will be unable to export data via the API. If you do not have access to identifiable data fields, these fields will not be exported in your request.
+
+### `httr`
+
+Numerous R packages and programming languages can be used to communicate with the REDCap (or any) API.  I use the `httr` package to make calls, which is based on RCurl.
+
+The first step is to create the body of the API request.  The body contains parameters that specify format and content to be downloaded from the API.  Here is an example for exporting individual records: 
+
+```{r post_body}
+
+cchmc_rug_token <- Sys.getenv("cchmc_rug_token")
+
+post_body <- list(
+  token                       = cchmc_rug_token, # your REDCap token
+  content                     = 'record', # specifies that data will be exported by record
+  format                      = 'csv', # the fomat of the export (i.e. csv, json, etc.)
+  type                        = 'flat', # specifies that data will be exported with one record per row
+  rawOrLabel                  = 'raw' # export raw coded values or labels
+  #forms                       = ''  # specifies which REDCap forms to pull data from
+  # records                     = '', # record names (record_id) to be exported
+  # fields                      = '' # specifies field names/variables to be exported
+)
+```
+
+`rawOrLabel`, `forms`, `records`, and `fields` are optional parameters that can be supplied in order to customize your request.  *My preference is to pull all available REDCap data.*  I think it is a bit easier to subset and manipulate the data with R rather than limiting the data I pull down from the API. 
+
+### `httr::POST()`
+
+You can use `httr::POST()` to submit your request to the REDCap server. `url` is the address of the page to retreive.  `body` sets the parameters of our request.  `httr::POST` returns a *response,* which includes all information from a request such as the url, status of the request (code 200 = success), and the content or requested data.
+
+```{r response}
+
+redcap_pull <- httr::POST(
+  url = 'https://redcap.research.cchmc.org/api/',
+  body = post_body,
+  config                      = httr::config(ssl_verifypeer=TRUE) ## this line validates the certificate 
+
+)
+
+redcap_pull
+```
+
+### `httr::content()`
+
+To retreive the contents of a request, we use `httr::content()`.  The content can be retreived in a specified format by assigning a value to the `as =` arguement ('raw', 'text', 'parsed').  If not specified, `content()` guesses which output is most appropriated.  
+
+Because we requested the format of our request to be a csv, we want to set `as =` to 'parsed.'  R still guesses correctly if we do not specify how the data should be retreived.
+
+```{r content}
+
+redcap_data <- httr::content(redcap_pull)
+
+```
+
+### Exported data
+
+Here is what our exported study data looks like as an R object (tibble):
+
+```{r redcap_table, echo = FALSE}
+knitr::kable(redcap_data, format = "html") %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "responsive"))
+
+```
+
+
+
+
+

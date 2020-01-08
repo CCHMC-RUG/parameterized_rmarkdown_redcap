@@ -1,0 +1,130 @@
+---
+title: "R Markdown Parameterization - Simple"
+author: "CCHMC RUG"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: journal
+    highlight: breezedark
+    toc: TRUE
+    toc_float: TRUE
+    code_folding: hide
+params:
+  year:
+    label: 'Year'
+    value: 2018
+---
+
+***To knit this .Rmd file with parameters using the GUI, click the down arrow next to the 'Knit' button and select "Knit with Parameters...".***
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, comment = NA)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r lib, echo = FALSE, warning = FALSE, message = FALSE}
+library(tidyverse)
+```
+
+```{r import, echo = FALSE, warning = FALSE, message = FALSE}
+d_weather <- read_rds("./rug_weather/cincy_weather.rds")
+```
+
+```{r medians, echo = FALSE}
+
+## This chunk filters the weather data to the year(s) and calculates the median daily 
+## temperature by year 
+
+d <- d_weather %>% 
+  filter(YEAR %in% params$year)
+
+weather_medians <- d %>% 
+  group_by(YEAR) %>% 
+  summarise(med_temp = median(TEMP),
+            med_max_temp = median(MAX),
+            med_min_temp = median(MIN))
+
+```
+
+## Daily Temperature
+
+```{r temp}
+
+ggplot(d) +
+  geom_col(aes(YDAY, TEMP, color = TEMP)) +
+  scale_color_viridis_c() +
+  geom_hline(aes(yintercept = med_temp), data = weather_medians, color = "red") +
+  facet_wrap(~YEAR) +
+  ylab("Temperature (C)") +
+  xlab("Day of Year") +
+  labs(color = "Temperature")
+
+```
+
+## Maximum Temperature
+
+```{r max_temp}
+
+ggplot(d) +
+  geom_col(aes(YDAY, MAX, color = MAX)) +
+  scale_color_viridis_c() +
+  geom_hline(aes(yintercept = med_max_temp), data = weather_medians, color = "red") +
+  facet_wrap(~YEAR) +
+  ylab("Maximum Temperature (C)") +
+  xlab("Day of Year") +
+  labs(color = "Max. Temperature")
+
+```
+
+## Minimum Temperature
+
+```{r min_temp}
+
+ggplot(d) +
+  geom_col(aes(YDAY, MIN, color = MIN)) +
+  scale_color_viridis_c() +
+  geom_hline(aes(yintercept = med_min_temp), data = weather_medians, color = "red") +
+  facet_wrap(~YEAR) +
+  ylab("Minimum Temperature (C)") +
+  xlab("Day of Year") +
+  labs(color = "Min. Temperature")
+
+```
+
+## Monthly Precipitation
+
+```{r precip}
+
+precip <- d %>% 
+  group_by(YEAR, MONTH) %>% 
+  summarise(total_precip = sum(PRCP))
+
+ggplot(precip) +
+  geom_col(aes(MONTH, total_precip, fill = total_precip)) +
+  scale_fill_viridis_c() +
+  geom_hline(aes(yintercept = median(total_precip)), data = precip, color = "red") +
+  facet_wrap(~YEAR) +
+  ylab("Precipitation (mm)") +
+  xlab("Month") +
+  labs(fill = "Precipitation")
+
+```
+
+## Cumulative Precipitation
+
+```{r cumulative_precip}
+
+cumulative_prcp <- d %>% 
+  group_by(YEAR) %>% 
+  mutate(cumulative_prcp = cumsum(PRCP))
+
+ggplot(cumulative_prcp) +
+  geom_col(aes(YDAY, cumulative_prcp, color = MAX)) +
+  scale_color_viridis_c() +
+  facet_wrap(~YEAR) +
+  ylab("Cumulative Precipitation (mm)") +
+  xlab("Day of Year") +
+  labs(color = "Precipitation")
+
+```
+

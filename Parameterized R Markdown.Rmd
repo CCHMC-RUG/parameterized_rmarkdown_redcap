@@ -1,0 +1,170 @@
+---
+title: "Parameterized R Markdown Reports"
+author: "CCHMC RUG"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: journal
+    highlight: breezedark
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# R Markdown
+<br>
+
+### What is R Markdown?
+
+Briefly, R Markdown is a framework to create high quality documents, reports, web applications, and dashboards using R. Through R Markdown you can combine narrative text and R code to explore, analyze, and summarize data.
+
+More information about R Markdown can be found in [Zana's awesome presentation](https://github.com/CCHMC-RUG/R-markdown-templates) at our meeting last Month!
+
+Much of this information can also be found in [this book](https://bookdown.org/yihui/rmarkdown/).
+
+### Why R Markdown
+
+*Zana's words, not mine...*
+
+  - Decreases effort (compared to pasting results into new document)
+  - If data is updated or methods change, the tables or graphs are automatically updated
+  - Accessible for R users and non-users
+     + Can hide or show code chunks
+     + Comments and interpretation is rendered as separate text 
+  - Improved transparency and reproducibility  
+  - Highly customizable
+  
+I want to emphasize that R Markdown allows you to work from **one document.**.  Your narrative text and R code are incorporated with the `knitr` package, which executes your R code chunks and creates a new markdown document that includes your code and the output (i.e. graphs, tables, analysis results).
+
+Creating documents with R Markdown starts with an .Rmd file that contains a combination of markdown (content with simple text formatting) and R code chunks. The .Rmd file is given to knitr, which runs all of the R code and creates a new markdown (.md) document which includes the R code and it’s output. R Studio includes a “Knit” button that enables you to render an .Rmd and preview it using a single click.
+
+### YAML Header
+
+The YAML header is the first section of an .Rmd document, and it is enclosed by ---.  It allows you to supply multiple options to your document.  The default options are: title, author, date, and output file type (HTML, PDF, Word, etc.)  The default output is HTML.  Formatting options can also be supplied, such as font size, font style (`theme`), color schemes (`highlight`), and whether to include a table of contents.
+
+***The YAML header is also where you can add parameters.***
+
+```yaml
+---
+title: "Parameterized R Markdown Reports"
+author: "CCHMC RUG"
+date: "`r Sys.Date()`"
+output: html_document
+params:
+---
+```
+
+# Parameterization
+<br>
+
+### What are .RMD parameters?
+
+R Markdown parameters allow you to customize your analysis and are particularly helpful with .Rmd template that you will use multiple times.  
+
+For example, you can add parameters to your .Rmd file to:
+
+  - run an analysis on a specific group of subjects
+  - clean and export data collected during a specific time period
+  - control whether or not code chunks are run when you render your report (i.e. skip a statistical test if it is not applicable or desired).
+
+### Why parameterization?
+
+Parameterization takes some of the advantages of R Markdown one step further.  Using parameterization:
+
+  - **boosts efficiency/reduces programming time**
+  - simplifies workflow
+  - enhances reproducibility
+  - reduces errors
+  
+### Parameters in practice
+
+Parameters can be designated in the `params` field in the YAML section.  Multiple parameters can be specified--each parameter must be on its own line.
+
+R objects can be added as parameters by including `!r` before R expressions. Any R expressions listed in the `params` are run before any code chunks in the document, which means any package dependency must be specifically stated (`package::function`).
+
+```yaml
+---
+output: html_document
+params:
+  id: 101
+  date: !r Sys.Date()
+---
+```
+
+### Accessing `params`
+
+The parameter values are contained within a read-only list, which can be accessed in the kitting environment by calling the `params` list and extracting the desired parameter with the `$` operator.
+
+```{r eval = FALSE}
+params$id
+params$date
+```
+
+
+### Knitting with parameters
+
+Parameterized .Rmd files can be rendered using three methods:
+
+  - using the `Knit` button within RStudio.
+  - using an interactive user interface to input parameter values.
+  - rmarkdown::render() with the params argument
+
+  
+**`Knit` button**
+
+This one is pretty straightforward--simply change the values of the `params` in the YAML section and click 'Knit.'
+
+**GUI**
+
+Parameters can be specified using a graphical user interface (GUI) to interactively select the parameters of a report.  The GUI can be called by clicking the `Knit` button and choosing 'Knit with Parameters."
+
+**rmarkdown::render()**
+
+*This is my preferred method.*  Using the `render()` function allows for a bit more flexibility and does not require you to alter/update the .Rmd file to change the parameters.
+
+Supplying values to the `params = ` argument of the `rmarkdown::render()` will input these values into `params` of your .Rmd file.  
+
+If set default values to your .Rmd parameters, the default values will be overridden by values in the `rmarkdown::render()` function.  If you have multiple parameters, you only need to supply values to the parameters you wish to change (i.e. the default values will be used for parameters you do not specify).
+
+```{r eval = FALSE}
+rmarkdown::render("MyDocument.Rmd", params = list(
+  id = 101,
+  date = "2019-12-25"
+))
+```
+
+The user interface can also be called by setting the `params =` argument of `rmarkdown::render()` to "ask."
+
+### Customizing the GUI
+
+The input controls for different types of parameters can be customized by specifying additional sub-items within the parameter specification in YAML. For example, sliders, check boxes, and text input boxes can all be used for input controls.
+
+In addition, we can also specify constraints of the values allowed in each parameter. For example, we may only want our model to be run for years between 2010 and 2018. This is particularly beneficial if you would like other users to interact with the report, as it prevents users from attempting to run reports outside of the designed limits.
+
+Here is an example of added input controls, where:
+  
+  - `label:` assigns a label to display above the parameter selection field
+  - `value:` designates the default value
+  - `input:` specifies the input (`slider` creates a slider with a range of selection values)
+  - `min:` specifies the lower bound of the slider range
+  - `max:` specifies the upper bound of the slider range
+  - `step:` specifies the interval between each selectable value
+
+```yaml
+---
+output: html_document
+params:
+  id:
+    label: "ID" 
+    value: 101
+    input: slider
+    min: 101
+    max: 120
+    step: 1
+  date: !r Sys.Date()
+---
+```
+
